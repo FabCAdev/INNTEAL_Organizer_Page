@@ -1,0 +1,203 @@
+CREATE DATABASE IF NOT EXISTS `INNTEAL_ORGANIZER` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+CREATE USER IF NOT EXISTS 'innteal_user'@'localhost' IDENTIFIED BY 'innteal_dev_pass';
+
+GRANT ALL PRIVILEGES ON `INNTEAL_ORGANIZER`.* TO 'innteal_user'@'localhost';
+
+FLUSH PRIVILEGES;
+
+USE `INNTEAL_ORGANIZER`;
+
+CREATE TABLE IF NOT EXISTS users (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  email VARCHAR(255) NOT NULL UNIQUE,
+  password VARCHAR(255) NOT NULL,
+  name VARCHAR(200) NOT NULL,
+  phone VARCHAR(50),
+  company VARCHAR(200),
+  role ENUM('user','manager','admin') NOT NULL DEFAULT 'user',
+  address VARCHAR(400),
+  profile_url VARCHAR(512),
+  accept_terms TINYINT(1) DEFAULT 0,
+  status TINYINT(1) DEFAULT 1,
+  last_login DATETIME NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  deleted_at DATETIME NULL,
+  INDEX (email),
+  INDEX (role)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS categories (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(150) NOT NULL,
+  code VARCHAR(80) UNIQUE,
+  icon VARCHAR(64),
+  description TEXT,
+  parent_id INT UNSIGNED NULL,
+  depth TINYINT DEFAULT 0,
+  sort_order INT DEFAULT 0,
+  metadata JSON NULL,
+  is_active TINYINT(1) DEFAULT 1,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  deleted_at DATETIME NULL,
+  FOREIGN KEY (parent_id) REFERENCES categories(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS suppliers (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(200) NOT NULL,
+  code VARCHAR(80) UNIQUE,
+  email VARCHAR(255),
+  phone VARCHAR(60),
+  contact_name VARCHAR(200),
+  contact_email VARCHAR(255),
+  contact_phone VARCHAR(60),
+  address VARCHAR(400),
+  city VARCHAR(120),
+  country VARCHAR(120),
+  postal_code VARCHAR(30),
+  rating TINYINT UNSIGNED DEFAULT 0,
+  notes TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS items (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  sku VARCHAR(120) UNIQUE,
+  barcode VARCHAR(120),
+  description TEXT,
+  category_id INT UNSIGNED NULL,
+  supplier_id INT UNSIGNED NULL,
+  stock INT DEFAULT 0,
+  reserved INT DEFAULT 0,
+  min_stock INT DEFAULT 0,
+  max_stock INT DEFAULT 0,
+  price DECIMAL(12,2) NULL,
+  cost DECIMAL(12,2) NULL,
+  location VARCHAR(200),
+  weight DECIMAL(10,3) NULL,
+  unit VARCHAR(30) DEFAULT 'unit',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  deleted_at DATETIME NULL,
+  FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL,
+  FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE SET NULL,
+  INDEX (sku),
+  INDEX (category_id),
+  INDEX (supplier_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS contacts (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(200) NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  phone VARCHAR(60),
+  company VARCHAR(200),
+  subject VARCHAR(255) NOT NULL,
+  type VARCHAR(80) DEFAULT 'general',
+  priority VARCHAR(20) DEFAULT 'normal',
+  message TEXT NOT NULL,
+  attachment_path VARCHAR(512) NULL,
+  subscribe TINYINT(1) DEFAULT 0,
+  status VARCHAR(40) DEFAULT 'new',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  processed_at DATETIME NULL,
+  processed_by INT UNSIGNED NULL,
+  FOREIGN KEY (processed_by) REFERENCES users(id) ON DELETE SET NULL,
+  INDEX (email),
+  INDEX (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS sessions (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id INT UNSIGNED NOT NULL,
+  token VARCHAR(512) NOT NULL,
+  ip VARCHAR(45),
+  user_agent VARCHAR(512),
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  expires_at DATETIME NULL,
+  revoked TINYINT(1) DEFAULT 0,
+  meta JSON NULL,
+  last_used DATETIME NULL,
+  session_type VARCHAR(50) DEFAULT 'web',
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  INDEX (user_id),
+  INDEX (token(120))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS audit_logs (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  entity VARCHAR(128) NOT NULL,
+  entity_id VARCHAR(64),
+  action VARCHAR(64) NOT NULL,
+  user_id INT UNSIGNED NULL,
+  data JSON NULL,
+  ip VARCHAR(45) NULL,
+  user_agent VARCHAR(512) NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  extra VARCHAR(255) NULL,
+  severity TINYINT DEFAULT 1,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+  INDEX (entity),
+  INDEX (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO users (id, email, password, name, phone, company, role, address, profile_url, accept_terms, status, created_at)
+VALUES
+(1, 'admin@innteal.local', 'changeme', 'Admin INNTEAL', '+521234567890', 'INNTEAL S.A.', 'admin', 'Av. Principal 123', NULL, 1, 1, NOW()),
+(2, 'maria@empresa.com', 'changeme', 'María López', '+521111222333', 'Empresa A', 'manager', 'Calle Falsa 45', NULL, 1, 1, NOW()),
+(3, 'juan@compania.org', 'changeme', 'Juan Pérez', '+521444555666', 'Compañía B', 'user', 'Av. Secundaria 9', NULL, 1, 1, NOW()),
+(4, 'ana@startup.io', 'changeme', 'Ana Gómez', NULL, 'Startup.io', 'user', NULL, NULL, 1, 1, NOW()),
+(5, 'soporte@cliente.com', 'changeme', 'Soporte Cliente', '+521777888999', 'Cliente C', 'manager', 'Oficina 12', NULL, 1, 1, NOW());
+
+INSERT INTO categories (id, name, code, icon, description, parent_id, depth, sort_order, is_active, created_at)
+VALUES
+(1, 'Electrónica', 'ELEC', '🔌', 'Artículos electrónicos y componentes', NULL, 0, 1, 1, NOW()),
+(2, 'Herramientas', 'HERR', '🛠️', 'Herramientas manuales y eléctricas', NULL, 0, 2, 1, NOW()),
+(3, 'Consumibles', 'CONS', '📦', 'Materiales consumibles y repuestos', NULL, 0, 3, 1, NOW()),
+(4, 'Oficina', 'OFI', '🏢', 'Suministros de oficina', NULL, 0, 4, 1, NOW()),
+(5, 'Seguridad', 'SEG', '🦺', 'Elementos de seguridad y protección', NULL, 0, 5, 1, NOW());
+
+INSERT INTO suppliers (id, name, code, email, phone, contact_name, contact_email, contact_phone, address, city, country, postal_code, rating, notes, created_at)
+VALUES
+(1, 'Distribuciones SA', 'DISTR-001', 'ventas@distribuciones.com', '+34123456789', 'Carlos Ruiz', 'c.ruiz@distribuciones.com', '+34123456789', 'Polígono Industrial 1', 'Madrid', 'España', '28001', 4, 'Entrega 48h', NOW()),
+(2, 'TecnoPro', 'TEC-100', 'contacto@tecnopro.com', '+34111222333', 'Laura Méndez', 'laura@tecnopro.com', '+34111222333', 'Calle Tech 5', 'Barcelona', 'España', '08002', 5, 'Soporte técnico incluido', NOW()),
+(3, 'Suministros Global', 'SUM-777', 'info@suministrosglobal.com', '+522222333444', 'Pablo Torres', 'p.torres@suministrosglobal.com', '+522222333444', 'Av. Central 200', 'Guadalajara', 'México', '44100', 3, 'Condiciones negociables', NOW()),
+(4, 'OficinaPlus', 'OFI-55', 'ventas@oficinaplus.com', '+34199887766', 'Marta Ruiz', 'marta@oficinaplus.com', '+34199887766', 'C/ Papel 12', 'Sevilla', 'España', '41001', 4, 'Catálogo amplio', NOW()),
+(5, 'SeguriTech', 'SEG-21', 'hola@seguritech.com', '+34155667788', 'Diego Luna', 'd.luna@seguritech.com', '+34155667788', 'Pº Seguridad 7', 'Valencia', 'España', '46001', 5, 'Equipamiento certificado', NOW());
+
+INSERT INTO items (id, name, sku, barcode, description, category_id, supplier_id, stock, reserved, min_stock, max_stock, price, cost, location, weight, unit, created_at)
+VALUES
+(1, 'Batería AA (pack 4)', 'AA-4PK', '8420000000001', 'Pack de 4 pilas AA', 3, 1, 250, 5, 20, 500, 6.50, 2.50, 'Almacén A / Estante 3', 0.120, 'pack', NOW()),
+(2, 'Taladro Percutor 700W', 'TAL-700', '8420000000002', 'Taladro percutor profesional', 2, 2, 40, 0, 2, 100, 120.00, 70.00, 'Almacén B / Palet 2', 3.200, 'unit', NOW()),
+(3, 'Guantes de nitrilo (M)', 'GNT-NIT-M', '8420000000003', 'Guantes de nitrilo talla M', 5, 5, 500, 20, 50, 2000, 1.75, 0.50, 'Almacén C / Caja 12', 0.050, 'pair', NOW()),
+(4, 'Bloc A4 100h', 'BLC-A4-100', '8420000000004', 'Bloc rayado 100 hojas', 4, 4, 300, 0, 10, 1000, 3.20, 1.00, 'Oficina / Estantería 1', 0.400, 'unit', NOW()),
+(5, 'Resistencia 10kΩ', 'RES-10K', '8420000000005', 'Resistencia 10 kiloohm 0.25W', 1, 2, 10000, 120, 100, 20000, 0.05, 0.01, 'Almacén Electrónica / Cajón R3', 0.001, 'unit', NOW());
+
+INSERT INTO contacts (id, name, email, phone, company, subject, type, priority, message, attachment_path, subscribe, status, created_at, processed_at, processed_by)
+VALUES
+(1, 'Carlos Fernández', 'carlos@example.com', '+341000111222', 'Empresa X', 'Consulta general', 'general', 'normal', 'Necesito información sobre integraciones.', NULL, 1, 'new', NOW(), NULL, NULL),
+(2, 'Lucía Márquez', 'lucia@example.com', '+341333444555', 'Comercio Y', 'Soporte técnico', 'soporte', 'alta', 'Incidencia con el módulo de inventario.', NULL, 0, 'processed', NOW(), NOW(), 2),
+(3, 'Roberto Díaz', 'roberto@example.com', '+341777666555', NULL, 'Solicitud de demo', 'venta', 'normal', 'Solicito demo para el equipo.', NULL, 1, 'new', NOW(), NULL, NULL),
+(4, 'María Ruiz', 'maria.ruiz@example.com', '+522221112222', 'Distribuciones SA', 'Integración API', 'integracion', 'alta', 'Necesitamos integrar con ERP', NULL, 0, 'processed', NOW(), NOW(), 1),
+(5, 'Equipo Soporte', 'soporte@cliente.com', '+521777888999', 'Cliente C', 'Reporte mensual', 'general', 'normal', 'Enviar reporte mensual de movimientos.', NULL, 0, 'new', NOW(), NULL, NULL);
+
+INSERT INTO sessions (id, user_id, token, ip, user_agent, created_at, expires_at, revoked, meta, last_used, session_type)
+VALUES
+(1001, 1, 'token_admin_sample_1001', '127.0.0.1', 'dev-client/1.0', NOW(), DATE_ADD(NOW(), INTERVAL 7 DAY), 0, JSON_OBJECT('note','sesion admin'), NOW(), 'web'),
+(1002, 2, 'token_maria_1002', '127.0.0.1', 'browser/99', NOW(), DATE_ADD(NOW(), INTERVAL 7 DAY), 0, NULL, NOW(), 'web'),
+(1003, 3, 'token_juan_1003', '192.168.1.50', 'curl/7.68', NOW(), DATE_ADD(NOW(), INTERVAL 1 DAY), 0, NULL, NOW(), 'api'),
+(1004, 4, 'token_ana_1004', '10.0.0.5', 'postman-runtime/8', NOW(), DATE_ADD(NOW(), INTERVAL 30 DAY), 0, NULL, NOW(), 'web'),
+(1005, 5, 'token_soporte_1005', '127.0.0.1', 'node-fetch/2', NOW(), DATE_ADD(NOW(), INTERVAL 14 DAY), 0, NULL, NOW(), 'web');
+
+INSERT INTO audit_logs (id, entity, entity_id, action, user_id, data, ip, user_agent, created_at, extra, severity)
+VALUES
+(5001, 'users', '1', 'create', 1, JSON_OBJECT('note','usuario inicial creado'), '127.0.0.1', 'migration-script', NOW(), NULL, 1),
+(5002, 'items', '2', 'update', 2, JSON_OBJECT('changes', JSON_ARRAY('price','stock')), '127.0.0.1', 'api-client', NOW(), 'precio actualizado', 2),
+(5003, 'categories', '3', 'delete', 1, NULL, '127.0.0.1', 'admin-ui', NOW(), NULL, 3),
+(5004, 'suppliers', '4', 'create', 3, JSON_OBJECT('initial','added'), '192.168.1.10', 'integration', NOW(), NULL, 1),
+(5005, 'contacts', '2', 'process', 2, JSON_OBJECT('status','processed'), '127.0.0.1', 'worker', NOW(), NULL, 1);
